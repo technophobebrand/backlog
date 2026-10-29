@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="nl" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmap & Backlog Haalbaarheid Planner</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'app-blue': '#4F86F7',
+                        'app-blue-hover': '#3b71e8',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .cell-editable:hover {
+            background-color: #ffffff;
+            outline: 1px dashed #cbd5e1;
+        }
+        .cell-editable:focus-within {
+            background-color: #ffffff;
+            outline: 2px solid #4F86F7;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased overflow-hidden select-none">
+
+    <!-- TOP HEADER / TOOLBAR -->
+    <header class="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shadow-xs z-20 shrink-0">
+        <!-- Left: App Title -->
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-app-blue/10 text-app-blue rounded-lg">
+                <i data-lucide="map" class="w-5 h-5"></i>
+            </div>
+            <h1 class="text-base font-semibold text-slate-800 flex items-center gap-2">
+                <span>Roadmap Haalbaarheid</span>
+                <span id="item-count-badge" class="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full font-normal border border-slate-200">0 features</span>
+            </h1>
+        </div>
+
+        <!-- Middle: Quick Timeline & Status Summary Legend -->
+        <div class="hidden lg:flex items-center gap-4 text-xs font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+            <div class="flex items-center gap-1.5">
+                <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
+                <span class="text-slate-500">Start:</span>
+                <span id="header-start-date" class="font-semibold text-slate-700">-</span>
+            </div>
+            <div class="flex items-center gap-1.5 border-l border-slate-300 pl-3">
+                <i data-lucide="flag" class="w-3.5 h-3.5 text-slate-500"></i>
+                <span class="text-slate-500">Einddoel:</span>
+                <span id="header-end-date" class="font-semibold text-slate-700">-</span>
+            </div>
+            <div class="flex items-center gap-2 border-l border-slate-300 pl-3">
+                <span id="badge-count-green" class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-semibold flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>0 Haalbaar</span>
+                </span>
+                <span id="badge-count-orange" class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-semibold flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    <span>0 Risico</span>
+                </span>
+                <span id="badge-count-red" class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200 text-[11px] font-semibold flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    <span>0 Onhaalbaar</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Right: Actions, Import/Export, Restore & Save -->
+        <div class="flex items-center space-x-2">
+            <!-- Save Status Badge, Save Button & Revert Button -->
+            <div id="save-status-container" class="flex items-center gap-1.5">
+                <span id="save-indicator" class="text-xs text-slate-500 flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 border border-slate-200">
+                    <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500"></i>
+                    <span>Opgeslagen</span>
+                </span>
+                <button id="btn-revert" onclick="revertUnsavedChanges()" disabled title="Herstel naar laatst opgeslagen staat" class="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    <span class="hidden md:inline">Herstellen</span>
+                </button>
+                <button id="btn-save" onclick="saveAllChanges()" disabled class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                    <span>Opslaan</span>
+                </button>
+            </div>
+
+            <div class="h-5 w-[1px] bg-slate-200"></div>
+
+            <!-- CSV & JSON Actions -->
+            <div class="flex items-center space-x-1">
+                <!-- CSV Import -->
+                <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="importCSVFile(event)">
+                <button onclick="document.getElementById('csv-file-input').click()" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-2.5 py-1.5 rounded-lg transition" title="Importeer Feature Backlog Priority.csv">
+                    <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i>
+                    <span class="hidden md:inline">CSV Import</span>
+                </button>
+
+                <button onclick="exportToCSV()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition" title="Exporteer naar CSV">
+                    <i data-lucide="file-output" class="w-4 h-4"></i>
+                </button>
+
+                <!-- JSON Backup Import/Export -->
+                <input type="file" id="json-file-input" accept=".json" class="hidden" onchange="importJSONFile(event)">
+                <button onclick="document.getElementById('json-file-input').click()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition" title="Importeer JSON Backup">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                </button>
+                <button onclick="exportToJSON()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition" title="Exporteer JSON Backup">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="h-5 w-[1px] bg-slate-200"></div>
+
+            <!-- Settings & Add Feature -->
+            <button onclick="openNewFeatureModal()" class="flex items-center gap-1.5 bg-app-blue hover:bg-app-blue-hover text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-xs transition">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Feature</span>
+            </button>
+            <button onclick="toggleSettingsModal()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition relative" title="Planning Configuraties & Instellingen">
+                <i data-lucide="settings" class="w-4.5 h-4.5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE (GRID + DETAILS PANEL) -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- MAIN CONTENT AREA -->
+        <section class="flex-1 flex flex-col min-w-0 bg-white">
+            
+            <!-- FILTER & SEARCH BAR -->
+            <div id="filter-panel" class="bg-slate-50 border-b border-slate-200 p-2.5 flex flex-wrap items-center gap-3 text-xs">
+                <!-- Search input -->
+                <div class="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-md border border-slate-200 shadow-2xs flex-1 min-w-[200px]">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                    <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Zoek op ID, Titel, Mijlpalen..." class="w-full bg-transparent border-none text-xs text-slate-800 focus:outline-none placeholder-slate-400">
+                </div>
+
+                <!-- Board Column Filter -->
+                <div class="flex items-center gap-1.5">
+                    <label class="font-medium text-slate-500">Board Column:</label>
+                    <select id="filter-column" onchange="applyFilters()" class="bg-white border border-slate-200 rounded-md px-2 py-1.5 focus:ring-1 focus:ring-app-blue outline-none text-slate-700">
+                        <option value="">Alle Columns</option>
+                    </select>
+                </div>
+
+                <!-- T-Shirt Size Filter -->
+                <div class="flex items-center gap-1.5">
+                    <label class="font-medium text-slate-500">T-Shirt Size:</label>
+                    <select id="filter-size" onchange="applyFilters()" class="bg-white border border-slate-200 rounded-md px-2 py-1.5 focus:ring-1 focus:ring-app-blue outline-none text-slate-700">
+                        <option value="">Alle Sizes</option>
+                    </select>
+                </div>
+
+                <!-- Feasibility Filter -->
+                <div class="flex items-center gap-1.5">
+                    <label class="font-medium text-slate-500">Haalbaarheid:</label>
+                    <select id="filter-feasibility" onchange="applyFilters()" class="bg-white border border-slate-200 rounded-md px-2 py-1.5 focus:ring-1 focus:ring-app-blue outline-none text-slate-700">
+                        <option value="">Alle Statuses</option>
+                        <option value="GREEN">🟢 Haalbaar</option>
+                        <option value="ORANGE">🟠 Risico</option>
+                        <option value="RED">🔴 Onhaalbaar</option>
+                    </select>
+                </div>
+
+                <button onclick="resetFilters()" class="text-slate-500 hover:text-slate-800 underline ml-auto">
+                    Filters wissen
+                </button>
+            </div>
+
+            <!-- DATA TABLE CONTAINER -->
+            <div class="flex-1 overflow-auto relative">
+                <table class="w-full text-left border-collapse min-w-[1050px]">
+                    <thead class="sticky top-0 bg-slate-100 text-xs font-semibold text-slate-600 border-b border-slate-200 z-10 shadow-2xs">
+                        <tr>
+                            <th class="py-2.5 px-2 text-center w-12">Prio</th>
+                            <th class="py-2.5 px-3 w-28">ID</th>
+                            <th class="py-2.5 px-3">Titel Feature</th>
+                            <th class="py-2.5 px-3 w-28">T-Shirt Size</th>
+                            <th class="py-2.5 px-3 w-32">Board Column</th>
+                            <th class="py-2.5 px-3 w-24">% Af</th>
+                            <th class="py-2.5 px-3 w-36">
+                                <div class="flex items-center gap-1" title="Berekening op basis van minimum sprints per T-shirt size">
+                                    <span>Datum valt mee</span>
+                                    <i data-lucide="info" class="w-3 h-3 text-slate-400"></i>
+                                </div>
+                            </th>
+                            <th class="py-2.5 px-3 w-36">
+                                <div class="flex items-center gap-1" title="Berekening op basis van maximum sprints per T-shirt size">
+                                    <span>Datum valt tegen</span>
+                                    <i data-lucide="info" class="w-3 h-3 text-slate-400"></i>
+                                </div>
+                            </th>
+                            <th class="py-2.5 px-3">Mijlpalen</th>
+                            <th class="py-2.5 px-3 text-center w-20">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody id="grid-tbody" class="divide-y divide-slate-200 text-xs">
+                        <!-- Dynamic Grid Rows Populated via JS -->
+                    </tbody>
+                </table>
+
+                <!-- EMPTY STATE -->
+                <div id="empty-state" class="hidden flex flex-col items-center justify-center p-12 text-center text-slate-400">
+                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3 border border-slate-200">
+                        <i data-lucide="layers" class="w-8 h-8 text-slate-400"></i>
+                    </div>
+                    <p class="font-medium text-slate-600">Geen features gevonden</p>
+                    <p class="text-xs text-slate-400 mt-1 max-w-sm">Geen resultaten voor de huidige filters of er is nog geen backlog geïmporteerd.</p>
+                    <button onclick="document.getElementById('csv-file-input').click()" class="mt-4 bg-app-blue text-white text-xs font-medium px-3 py-2 rounded-md shadow-xs hover:bg-app-blue-hover transition">
+                        + CSV Backlog Importeren
+                    </button>
+                </div>
+            </div>
+
+            <!-- FOOTER STATUS BAR -->
+            <footer class="h-8 bg-slate-50 border-t border-slate-200 px-4 flex items-center justify-between text-xs text-slate-500 shrink-0">
+                <div class="flex items-center gap-4">
+                    <span id="footer-count">0 van 0 getoond</span>
+                    <span id="footer-sprint-info" class="text-slate-400 border-l border-slate-300 pl-4">Sprintduur: 14 dagen | Velocity: 30 pt</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Berekeningen up-to-date</span>
+                </div>
+            </footer>
+        </section>
+
+        <!-- RIGHT SIDEBAR: FEATURE DETAILS & CALCULATIONS -->
+        <aside id="notes-sidebar" class="w-96 bg-slate-50 border-l border-slate-200 flex flex-col shrink-0 shadow-lg transition-all duration-200 z-10">
+            <!-- Sidebar Header -->
+            <div class="p-3.5 border-b border-slate-200 bg-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-4 h-4 text-app-blue"></i>
+                    <h2 class="font-semibold text-slate-800 text-xs uppercase tracking-wider">Feature Details & Berekening</h2>
+                </div>
+                <button onclick="deselectRow()" class="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition" title="Sluit details">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div id="notes-content-container" class="flex-1 flex flex-col p-4 overflow-y-auto space-y-4">
+                
+                <!-- NO SELECTION STATE -->
+                <div id="no-selection-view" class="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                    <i data-lucide="mouse-pointer-click" class="w-10 h-10 mb-2 stroke-[1.5] text-slate-300"></i>
+                    <p class="font-medium text-slate-600 text-sm">Geen feature geselecteerd</p>
+                    <p class="text-xs text-slate-400 mt-1">Klik op een rij in de tabel om de gedetailleerde doorlooptijd- en haalbaarheidsberekening te bekijken.</p>
+                </div>
+
+                <!-- ACTIVE SELECTION VIEW -->
+                <div id="active-selection-view" class="hidden flex-1 flex flex-col space-y-4">
+                    
+                    <!-- Feature Card Header -->
+                    <div class="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span id="side-id" class="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                ID-000
+                            </span>
+                            <span id="side-status-badge" class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-100 text-slate-700">
+                                Status
+                            </span>
+                        </div>
+                        <h3 id="side-title" class="font-semibold text-slate-800 text-sm leading-snug">
+                            Titel van de feature
+                        </h3>
+                    </div>
+
+                    <!-- Feasibility Breakdown Box -->
+                    <div id="side-feasibility-box" class="p-3.5 rounded-lg border shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider">Haalbaarheidsstatus</span>
+                            <span id="side-feasibility-badge" class="px-2 py-0.5 text-xs font-extrabold rounded">
+                                -
+                            </span>
+                        </div>
+                        <div class="space-y-1 text-xs pt-1 border-t border-black/10">
+                            <div class="flex justify-between">
+                                <span>Datum valt mee (Best-Case):</span>
+                                <strong id="side-best-date">-</strong>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Datum valt tegen (Worst-Case):</span>
+                                <strong id="side-worst-date">-</strong>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Streefeinddatum:</span>
+                                <span id="side-target-date" class="font-medium">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculation Explanation Details -->
+                    <div class="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs space-y-2 text-xs">
+                        <h4 class="font-semibold text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                            <i data-lucide="calculator" class="w-4 h-4 text-app-blue"></i>
+                            <span>Berekening Details</span>
+                        </h4>
+                        <div class="space-y-1.5 text-slate-600">
+                            <div class="flex justify-between">
+                                <span>Prioriteit Positie:</span>
+                                <span id="side-calc-prio" class="font-semibold text-slate-800">#1</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>T-Shirt Size:</span>
+                                <span id="side-calc-size" class="font-semibold text-slate-800">M</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Normale Sprints (Min - Max):</span>
+                                <span id="side-calc-raw-sprints" class="font-semibold text-slate-800">2 - 4 sprints</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Voortgang (% af):</span>
+                                <span id="side-calc-progress" class="font-semibold text-slate-800">0%</span>
+                            </div>
+                            <div class="flex justify-between border-t border-slate-100 pt-1 text-app-blue font-medium">
+                                <span>Resterende Sprints (Min - Max):</span>
+                                <span id="side-calc-rem-sprints">2 - 4 sprints</span>
+                            </div>
+                            <div class="flex justify-between text-slate-500">
+                                <span>Resterende Dagen (Min - Max):</span>
+                                <span id="side-calc-rem-days">28 - 56 dagen</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Milestones & Notes Editor -->
+                    <div class="flex-1 flex flex-col bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs space-y-2">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <label for="side-notes-textarea" class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                <i data-lucide="milestone" class="w-3.5 h-3.5 text-amber-500"></i>
+                                <span>Mijlpalen / Notities</span>
+                            </label>
+                        </div>
+                        <textarea id="side-notes-textarea" oninput="onNoteInput()" placeholder="Aantekeningen over mijlpalen, afhankelijkheden of opleverpunten..." class="w-full flex-1 min-h-[100px] text-xs text-slate-800 p-2.5 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-app-blue resize-none leading-relaxed bg-slate-50 focus:bg-white transition"></textarea>
+                    </div>
+
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- MODAL: PLANNING CONFIGURATIONS & SETTINGS -->
+    <div id="modal-settings" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <!-- Modal Header -->
+            <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 bg-app-blue/10 text-app-blue rounded-lg">
+                        <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-slate-800 text-sm">Roadmap Planning Instellingen</h3>
+                        <p class="text-[11px] text-slate-500">Configureer parameters voor de haalbaarheidsberekening</p>
+                    </div>
+                </div>
+                <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <div class="p-5 space-y-5 text-xs text-slate-700 max-h-[80vh] overflow-y-auto">
+                
+                <!-- Timeline & Capacity Settings -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Startdatum Planning *</label>
+                        <input type="date" id="cfg-start-date" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none bg-white">
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Vanaf deze datum wordt gerekend.</span>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Streef/Einddatum (Target) *</label>
+                        <input type="date" id="cfg-end-date" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none bg-white">
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Eindgrens voor haalbaarheid (Groen/Oranje/Rood).</span>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Sprintduur (Dagen) *</label>
+                        <input type="number" id="cfg-sprint-days" min="1" max="90" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none bg-white">
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Aantal kalenderdagen per sprint (standaard 14).</span>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Team Velocity (Storypoints per sprint)</label>
+                        <input type="number" id="cfg-velocity" min="1" class="w-full text-xs p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none bg-white">
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">Capaciteit per sprint ter referentie.</span>
+                    </div>
+                </div>
+
+                <!-- T-Shirt Size Mapping Table -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-semibold text-slate-800 text-xs flex items-center gap-1.5">
+                            <i data-lucide="shirt" class="w-4 h-4 text-app-blue"></i>
+                            <span>T-Shirt Size Sprints Mapping (Min / Max)</span>
+                        </h4>
+                        <span class="text-[10px] text-slate-400">Opgegeven in aantal Sprints</span>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-lg overflow-hidden">
+                        <table class="w-full text-left text-xs bg-white">
+                            <thead class="bg-slate-100 font-semibold text-slate-600 border-b border-slate-200">
+                                <tr>
+                                    <th class="py-2 px-3">T-Shirt Size</th>
+                                    <th class="py-2 px-3">Minimum Sprints (Meevallend)</th>
+                                    <th class="py-2 px-3">Maximum Sprints (Tegenvallend)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tshirt-mapping-tbody" class="divide-y divide-slate-200">
+                                <!-- Dynamic Size Config Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reset Demo Data Area -->
+                <div class="pt-2 border-t border-slate-200 flex items-center justify-between">
+                    <button onclick="resetToDemoData()" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-md font-medium text-xs transition flex items-center gap-1">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Reset naar Voorbeelddata</span>
+                    </button>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleSettingsModal()" class="px-4 py-1.5 border border-slate-300 rounded-lg font-medium text-slate-600 hover:bg-slate-50 transition">
+                            Annuleren
+                        </button>
+                        <button onclick="saveSettingsFromModal()" class="px-4 py-1.5 bg-app-blue hover:bg-app-blue-hover text-white rounded-lg font-medium shadow-xs transition">
+                            Instellingen Toepassen
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT FEATURE -->
+    <div id="modal-new-feature" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <h3 class="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-app-blue"></i>
+                    <span>Nieuwe Feature Toevoegen</span>
+                </h3>
+                <button onclick="closeNewFeatureModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-new-feature" onsubmit="handleNewFeatureSubmit(event)" class="p-5 space-y-3.5 text-xs">
+                
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-1">
+                        <label class="block font-semibold text-slate-700 mb-1">Feature ID *</label>
+                        <input type="text" id="input-id" required placeholder="Bijv. 12345" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none font-mono">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block font-semibold text-slate-700 mb-1">Titel Feature *</label>
+                        <input type="text" id="input-title" required placeholder="Bijv. Rapportage dashboard exporteren" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">T-Shirt Size *</label>
+                        <select id="input-size" required class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none bg-white font-semibold">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Board Column *</label>
+                        <input type="text" id="input-column" list="datalist-columns" required placeholder="Bijv. New / Active" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none">
+                        <datalist id="datalist-columns"></datalist>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Voortgang (% af)</label>
+                        <input type="number" id="input-progress" min="0" max="100" value="0" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Mijlpalen / Notities</label>
+                    <textarea id="input-milestones" rows="2" placeholder="Optionele mijlpalen of opmerkingen..." class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-app-blue outline-none resize-none"></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-200 flex justify-end gap-2">
+                    <button type="button" onclick="closeNewFeatureModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition">
+                        Annuleren
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-app-blue hover:bg-app-blue-hover text-white rounded-lg font-medium shadow-xs transition">
+                        Feature Toevoegen
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- CONFIRMATION MODAL -->
+    <div id="modal-confirm" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-5 border border-slate-200 space-y-4 text-center">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h4 class="font-semibold text-slate-800 text-sm" id="confirm-title">Feature Verwijderen</h4>
+                <p class="text-xs text-slate-500 mt-1" id="confirm-message">Weet je zeker dat je deze feature wilt verwijderen?</p>
+            </div>
+            <div class="flex justify-center gap-2 pt-2 text-xs">
+                <button onclick="closeConfirmModal(false)" class="px-4 py-2 border border-slate-300 rounded-lg font-medium text-slate-600 hover:bg-slate-50 transition">
+                    Annuleren
+                </button>
+                <button id="confirm-action-btn" onclick="closeConfirmModal(true)" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition shadow-xs">
+                    Verwijderen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // DEFAULT CONFIGURATIONS
+        const DEFAULT_CONFIG = {
+            startDate: new Date().toISOString().slice(0, 10),
+            endDate: getFutureDateISO(180), // ~6 months from now
+            sprintDays: 14,
+            velocity: 30,
+            tshirtSizes: {
+                'XXS': { minSprints: 0.25, maxSprints: 0.5 },
+                'XS':  { minSprints: 0.5,  maxSprints: 1.0 },
+                'S':   { minSprints: 1.0,  maxSprints: 2.0 },
+                'M':   { minSprints: 2.0,  maxSprints: 4.0 },
+                'L':   { minSprints: 4.0,  maxSprints: 6.0 },
+                'XL':  { minSprints: 6.0,  maxSprints: 10.0 },
+                'XXL': { minSprints: 10.0, maxSprints: 16.0 }
+            }
+        };
+
+        // INITIAL SAMPLE FEATURES (Representing Feature Backlog Priority.csv)
+        const INITIAL_DEMO_FEATURES = [
+            {
+                id: '10804',
+                priority: 1,
+                title: 'Data Archivering Beta Functionaliteit',
+                size: 'M',
+                column: 'In Progress',
+                progress: 25,
+                milestones: 'Mijlpaal 1: Database migratie gereed'
+            },
+            {
+                id: '10812',
+                priority: 2,
+                title: 'Real-time Commentaar Platform',
+                size: 'S',
+                column: 'To Do',
+                progress: 0,
+                milestones: 'Oplevering verwachte sprint 3'
+            },
+            {
+                id: '10815',
+                priority: 3,
+                title: 'Meertalige Ondersteuning (NL/EN)',
+                size: 'L',
+                column: 'To Do',
+                progress: 10,
+                milestones: 'Afhankelijk van i18n framework'
+            },
+            {
+                id: '10820',
+                priority: 4,
+                title: 'Google Workspace & Dropbox Integratie',
+                size: 'XL',
+                column: 'Backlog',
+                progress: 0,
+                milestones: 'OAuth 2.0 audit vereist'
+            },
+            {
+                id: '10825',
+                priority: 5,
+                title: 'Performance Optimalisatie Database Indexen',
+                size: 'XS',
+                column: 'Backlog',
+                progress: 50,
+                milestones: 'Snelle winst voor Q3'
+            },
+            {
+                id: '10830',
+                priority: 6,
+                title: 'Geautomatiseerde Playwright E2E Test Suite',
+                size: 'M',
+                column: 'Backlog',
+                progress: 0,
+                milestones: 'Continu integratie pipeline'
+            },
+            {
+                id: '10842',
+                priority: 7,
+                title: 'Geavanceerd Rechtenbeheer (RBAC)',
+                size: 'XXL',
+                column: 'Backlog',
+                progress: 0,
+                milestones: 'Beveiligingsaudit in Q4'
+            }
+        ];
+
+        // GLOBAL APPLICATION STATE
+        let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+        let features = [];
+        let savedStateSnapshot = null; // Used for Revert functionality
+        let selectedFeatureId = null;
+        let isDirty = false;
+        let confirmResolver = null;
+
+        // INITIALIZATION
+        window.addEventListener('DOMContentLoaded', () => {
+            loadInitialState();
+            populateConfigForm();
+            populateSizeDropdowns();
+            calculateAndRender();
+            lucide.createIcons();
+        });
+
+        // Warn on unsaved changes before leaving
+        window.addEventListener('beforeunload', (e) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // STATE MANAGERS & LOCAL STORAGE
+        function loadInitialState() {
+            const stored = localStorage.getItem('roadmap_planning_data_v1');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    config = parsed.config || JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+                    features = parsed.features || JSON.parse(JSON.stringify(INITIAL_DEMO_FEATURES));
+                } catch (e) {
+                    resetToDefaultState();
+                }
+            } else {
+                resetToDefaultState();
+            }
+            // Take baseline snapshot for reverting
+            takeStateSnapshot();
+        }
+
+        function resetToDefaultState() {
+            config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+            features = JSON.parse(JSON.stringify(INITIAL_DEMO_FEATURES));
+        }
+
+        function takeStateSnapshot() {
+            savedStateSnapshot = JSON.stringify({ config, features });
+            markDirty(false);
+        }
+
+        function revertUnsavedChanges() {
+            if (!savedStateSnapshot) return;
+            const parsed = JSON.parse(savedStateSnapshot);
+            config = parsed.config;
+            features = parsed.features;
+            populateConfigForm();
+            markDirty(false);
+            calculateAndRender();
+        }
+
+        function markDirty(dirty = true) {
+            isDirty = dirty;
+            const indicator = document.getElementById('save-indicator');
+            const saveBtn = document.getElementById('btn-save');
+            const revertBtn = document.getElementById('btn-revert');
+
+            if (isDirty) {
+                indicator.className = 'text-xs text-amber-700 bg-amber-50 font-medium flex items-center gap-1.5 px-2.5 py-1 rounded border border-amber-200';
+                indicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Niet-opgeslagen`;
+                saveBtn.disabled = false;
+                revertBtn.disabled = false;
+            } else {
+                indicator.className = 'text-xs text-slate-600 flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 border border-slate-200';
+                indicator.innerHTML = `<i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500"></i> Opgeslagen`;
+                saveBtn.disabled = true;
+                revertBtn.disabled = true;
+            }
+            lucide.createIcons();
+        }
+
+        function saveAllChanges() {
+            const dataToSave = { config, features };
+            localStorage.setItem('roadmap_planning_data_v1', JSON.stringify(dataToSave));
+            takeStateSnapshot();
+            
+            const btn = document.getElementById('btn-save');
+            btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> Opgeslagen!`;
+            setTimeout(() => {
+                btn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i> Opslaan`;
+                lucide.createIcons();
+            }, 1200);
+            lucide.createIcons();
+        }
+
+        function resetToDemoData() {
+            resetToDefaultState();
+            populateConfigForm();
+            selectedFeatureId = null;
+            markDirty(true);
+            calculateAndRender();
+            toggleSettingsModal();
+        }
+
+        // BEREKENINGSLOGICA (CUMULATIEVE HAALBAARHEID)
+        function calculateFeasibility() {
+            if (!config.startDate) return;
+
+            let prevBestDate = new Date(config.startDate);
+            let prevWorstDate = new Date(config.startDate);
+            const targetEndDate = new Date(config.endDate);
+
+            features.forEach((feat, index) => {
+                feat.priority = index + 1;
+
+                // T-Shirt Size lookup fallback
+                const sizeInfo = config.tshirtSizes[feat.size] || { minSprints: 1, maxSprints: 2 };
+                const progressFactor = Math.max(0, Math.min(100, feat.progress || 0)) / 100;
+                
+                // Remaining sprints after progress factor
+                feat.remMinSprints = sizeInfo.minSprints * (1 - progressFactor);
+                feat.remMaxSprints = sizeInfo.maxSprints * (1 - progressFactor);
+
+                feat.remMinDays = feat.remMinSprints * config.sprintDays;
+                feat.remMaxDays = feat.remMaxSprints * config.sprintDays;
+
+                // Cumulatieve datums berekenen
+                const bestDate = addDays(prevBestDate, feat.remMinDays);
+                const worstDate = addDays(prevWorstDate, feat.remMaxDays);
+
+                feat.bestCaseDate = bestDate;
+                feat.worstCaseDate = worstDate;
+
+                // Next item starts where this item ends
+                prevBestDate = bestDate;
+                prevWorstDate = worstDate;
+
+                // Determine Feasibility Status
+                // GREEN: Worst-Case <= Target Date
+                // ORANGE: Worst-Case > Target Date AND Best-Case <= Target Date
+                // RED: Best-Case > Target Date
+                if (worstDate <= targetEndDate) {
+                    feat.feasibility = 'GREEN';
+                    feat.feasibilityLabel = 'Haalbaar';
+                } else if (bestDate <= targetEndDate) {
+                    feat.feasibility = 'ORANGE';
+                    feat.feasibilityLabel = 'Risico';
+                } else {
+                    feat.feasibility = 'RED';
+                    feat.feasibilityLabel = 'Onhaalbaar';
+                }
+            });
+        }
+
+        // RENDER GRID & UI
+        function calculateAndRender() {
+            calculateFeasibility();
+            renderHeaderSummary();
+            updateFilterDropdowns();
+            renderGrid();
+            renderSidebar();
+        }
+
+        function renderHeaderSummary() {
+            document.getElementById('header-start-date').textContent = formatDateNL(config.startDate);
+            document.getElementById('header-end-date').textContent = formatDateNL(config.endDate);
+            document.getElementById('footer-sprint-info').textContent = `Sprintduur: ${config.sprintDays} dagen | Velocity: ${config.velocity || '-'} pt/sprint`;
+
+            let greenCount = 0, orangeCount = 0, redCount = 0;
+            features.forEach(f => {
+                if (f.feasibility === 'GREEN') greenCount++;
+                if (f.feasibility === 'ORANGE') orangeCount++;
+                if (f.feasibility === 'RED') redCount++;
+            });
+
+            document.getElementById('badge-count-green').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>${greenCount} Haalbaar`;
+            document.getElementById('badge-count-orange').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>${orangeCount} Risico`;
+            document.getElementById('badge-count-red').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>${redCount} Onhaalbaar`;
+        }
+
+        function renderGrid() {
+            const tbody = document.getElementById('grid-tbody');
+            const emptyState = document.getElementById('empty-state');
+
+            let filtered = filterFeaturesList(features);
+
+            document.getElementById('item-count-badge').textContent = `${features.length} features`;
+            document.getElementById('footer-count').textContent = `${filtered.length} van ${features.length} getoond`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            tbody.innerHTML = filtered.map((item) => {
+                const isSelected = item.id === selectedFeatureId;
+                
+                // Color styling for status row / badges
+                let rowBgClass = '';
+                if (item.feasibility === 'GREEN') {
+                    rowBgClass = 'bg-emerald-50/60 hover:bg-emerald-50 border-l-4 border-l-emerald-500';
+                } else if (item.feasibility === 'ORANGE') {
+                    rowBgClass = 'bg-amber-50/60 hover:bg-amber-50 border-l-4 border-l-amber-500';
+                } else {
+                    rowBgClass = 'bg-rose-50/60 hover:bg-rose-50 border-l-4 border-l-rose-500';
+                }
+
+                if (isSelected) {
+                    rowBgClass += ' ring-2 ring-app-blue/50 z-10 font-medium';
+                }
+
+                const sizeKeys = Object.keys(config.tshirtSizes);
+
+                return `
+                    <tr id="row-${item.id}" onclick="selectRow('${item.id}')" class="transition cursor-pointer ${rowBgClass}">
+                        
+                        <!-- Priority & Reorder Controls -->
+                        <td class="py-2 px-2 text-center" onclick="event.stopPropagation()">
+                            <div class="flex items-center justify-center gap-1 text-slate-400">
+                                <span class="font-bold text-slate-600 text-[11px] w-4">#${item.priority}</span>
+                                <div class="flex flex-col">
+                                    <button onclick="movePriority('${item.id}', -1)" ${item.priority === 1 ? 'disabled' : ''} class="hover:text-app-blue disabled:opacity-20">
+                                        <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                                    </button>
+                                    <button onclick="movePriority('${item.id}', 1)" ${item.priority === features.length ? 'disabled' : ''} class="hover:text-app-blue disabled:opacity-20">
+                                        <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- ID (Editable) -->
+                        <td class="py-2 px-3 cell-editable">
+                            <input type="text" value="${escapeHtml(item.id)}" 
+                                   onfocus="selectRow('${item.id}')"
+                                   onblur="updateFeatureId('${item.id}', this.value)"
+                                   onkeydown="if(event.key==='Enter') this.blur()"
+                                   class="w-full bg-transparent font-mono text-xs font-semibold text-slate-700 focus:bg-white focus:border border-slate-300 rounded px-1 outline-none">
+                        </td>
+
+                        <!-- Title (Editable) -->
+                        <td class="py-2 px-3 cell-editable">
+                            <input type="text" value="${escapeHtml(item.title)}" 
+                                   onfocus="selectRow('${item.id}')"
+                                   onblur="updateFeatureField('${item.id}', 'title', this.value)"
+                                   onkeydown="if(event.key==='Enter') this.blur()"
+                                   class="w-full bg-transparent text-xs font-semibold text-slate-800 focus:bg-white focus:border border-slate-300 rounded px-1 outline-none">
+                        </td>
+
+                        <!-- T-Shirt Size (Select Dropdown) -->
+                        <td class="py-2 px-3 cell-editable" onclick="event.stopPropagation()">
+                            <select onchange="updateFeatureField('${item.id}', 'size', this.value)" 
+                                    class="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-xs font-bold text-slate-700 outline-none focus:ring-1 focus:ring-app-blue">
+                                ${sizeKeys.map(s => `<option value="${s}" ${item.size === s ? 'selected' : ''}>${s}</option>`).join('')}
+                            </select>
+                        </td>
+
+                        <!-- Board Column (Status Editable with Datalist) -->
+                        <td class="py-2 px-3 cell-editable">
+                            <input type="text" value="${escapeHtml(item.column || '')}" 
+                                   list="datalist-columns"
+                                   onfocus="selectRow('${item.id}')"
+                                   onblur="updateFeatureField('${item.id}', 'column', this.value)"
+                                   onkeydown="if(event.key==='Enter') this.blur()"
+                                   class="w-full bg-transparent text-xs text-slate-700 focus:bg-white focus:border border-slate-300 rounded px-1 outline-none">
+                        </td>
+
+                        <!-- Progress (% Af) -->
+                        <td class="py-2 px-3 cell-editable" onclick="event.stopPropagation()">
+                            <div class="flex items-center gap-1">
+                                <input type="number" min="0" max="100" value="${item.progress || 0}" 
+                                       onblur="updateFeatureField('${item.id}', 'progress', parseInt(this.value) || 0)"
+                                       onkeydown="if(event.key==='Enter') this.blur()"
+                                       class="w-12 bg-white border border-slate-200 rounded px-1 py-0.5 text-xs text-center font-semibold text-slate-800 outline-none">
+                                <span class="text-[10px] text-slate-500">%</span>
+                            </div>
+                        </td>
+
+                        <!-- Datum valt mee (Best Case) -->
+                        <td class="py-2 px-3 text-slate-800 font-medium">
+                            <div class="flex flex-col">
+                                <span>${formatDateNL(item.bestCaseDate)}</span>
+                                <span class="text-[10px] text-slate-400">(${item.remMinSprints.toFixed(1)} spr)</span>
+                            </div>
+                        </td>
+
+                        <!-- Datum valt tegen (Worst Case) -->
+                        <td class="py-2 px-3 font-semibold">
+                            <div class="flex flex-col">
+                                <span>${formatDateNL(item.worstCaseDate)}</span>
+                                <span class="text-[10px] text-slate-500">(${item.remMaxSprints.toFixed(1)} spr)</span>
+                            </div>
+                        </td>
+
+                        <!-- Milestones / Notities (Editable) -->
+                        <td class="py-2 px-3 cell-editable">
+                            <input type="text" value="${escapeHtml(item.milestones || '')}" 
+                                   placeholder="Geen mijlpaal..."
+                                   onfocus="selectRow('${item.id}')"
+                                   onblur="updateFeatureField('${item.id}', 'milestones', this.value)"
+                                   onkeydown="if(event.key==='Enter') this.blur()"
+                                   class="w-full bg-transparent text-xs text-slate-600 outline-none placeholder-slate-300">
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="py-2 px-3 text-center" onclick="event.stopPropagation()">
+                            <button onclick="confirmDeleteFeature('${item.id}')" class="p-1 text-slate-400 hover:text-rose-600 transition" title="Verwijder feature">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // UPDATE FEATURE VALUES & REORDER
+        function updateFeatureField(id, field, value) {
+            const feat = features.find(f => f.id === id);
+            if (feat && feat[field] !== value) {
+                feat[field] = value;
+                markDirty(true);
+                calculateAndRender();
+            }
+        }
+
+        function updateFeatureId(oldId, newId) {
+            const trimmedId = newId.trim();
+            if (!trimmedId || oldId === trimmedId) return;
+
+            // Check if ID is unique
+            if (features.some(f => f.id === trimmedId)) {
+                alert(`ID "${trimmedId}" is al in gebruik. Kies een uniek Feature ID.`);
+                renderGrid();
+                return;
+            }
+
+            const feat = features.find(f => f.id === oldId);
+            if (feat) {
+                feat.id = trimmedId;
+                if (selectedFeatureId === oldId) {
+                    selectedFeatureId = trimmedId;
+                }
+                markDirty(true);
+                calculateAndRender();
+            }
+        }
+
+        function movePriority(id, direction) {
+            const index = features.findIndex(f => f.id === id);
+            if (index < 0) return;
+
+            const targetIndex = index + direction;
+            if (targetIndex >= 0 && targetIndex < features.length) {
+                const temp = features[index];
+                features[index] = features[targetIndex];
+                features[targetIndex] = temp;
+                markDirty(true);
+                calculateAndRender();
+            }
+        }
+
+        // SELECTION & DETAILS SIDEBAR
+        function selectRow(id) {
+            if (selectedFeatureId === id) return;
+            selectedFeatureId = id;
+            renderGrid();
+            renderSidebar();
+        }
+
+        function deselectRow() {
+            selectedFeatureId = null;
+            renderGrid();
+            renderSidebar();
+        }
+
+        function renderSidebar() {
+            const noSel = document.getElementById('no-selection-view');
+            const actSel = document.getElementById('active-selection-view');
+
+            if (!selectedFeatureId) {
+                noSel.classList.remove('hidden');
+                actSel.classList.add('hidden');
+                return;
+            }
+
+            const feat = features.find(f => f.id === selectedFeatureId);
+            if (!feat) {
+                deselectRow();
+                return;
+            }
+
+            noSel.classList.add('hidden');
+            actSel.classList.remove('hidden');
+
+            document.getElementById('side-id').textContent = feat.id;
+            document.getElementById('side-title').textContent = feat.title;
+            document.getElementById('side-status-badge').textContent = feat.column || 'Unassigned';
+
+            // Feasibility badge box
+            const box = document.getElementById('side-feasibility-box');
+            const badge = document.getElementById('side-feasibility-badge');
+
+            if (feat.feasibility === 'GREEN') {
+                box.className = 'p-3.5 rounded-lg border shadow-2xs space-y-2 bg-emerald-50 text-emerald-900 border-emerald-200';
+                badge.className = 'px-2 py-0.5 text-xs font-bold rounded bg-emerald-200 text-emerald-900';
+                badge.textContent = 'HAALBAAR';
+            } else if (feat.feasibility === 'ORANGE') {
+                box.className = 'p-3.5 rounded-lg border shadow-2xs space-y-2 bg-amber-50 text-amber-900 border-amber-200';
+                badge.className = 'px-2 py-0.5 text-xs font-bold rounded bg-amber-200 text-amber-900';
+                badge.textContent = 'RISICO';
+            } else {
+                box.className = 'p-3.5 rounded-lg border shadow-2xs space-y-2 bg-rose-50 text-rose-900 border-rose-200';
+                badge.className = 'px-2 py-0.5 text-xs font-bold rounded bg-rose-200 text-rose-900';
+                badge.textContent = 'ONHAALBAAR';
+            }
+
+            document.getElementById('side-best-date').textContent = formatDateNL(feat.bestCaseDate);
+            document.getElementById('side-worst-date').textContent = formatDateNL(feat.worstCaseDate);
+            document.getElementById('side-target-date').textContent = formatDateNL(config.endDate);
+
+            // Calc Details
+            const sizeInfo = config.tshirtSizes[feat.size] || { minSprints: 0, maxSprints: 0 };
+            document.getElementById('side-calc-prio').textContent = `#${feat.priority}`;
+            document.getElementById('side-calc-size').textContent = feat.size;
+            document.getElementById('side-calc-raw-sprints').textContent = `${sizeInfo.minSprints} - ${sizeInfo.maxSprints} spr`;
+            document.getElementById('side-calc-progress').textContent = `${feat.progress || 0}%`;
+            document.getElementById('side-calc-rem-sprints').textContent = `${feat.remMinSprints.toFixed(1)} - ${feat.remMaxSprints.toFixed(1)} spr`;
+            document.getElementById('side-calc-rem-days').textContent = `${Math.round(feat.remMinDays)} - ${Math.round(feat.remMaxDays)} dagen`;
+
+            document.getElementById('side-notes-textarea').value = feat.milestones || '';
+
+            lucide.createIcons();
+        }
+
+        function onNoteInput() {
+            if (!selectedFeatureId) return;
+            const feat = features.find(f => f.id === selectedFeatureId);
+            const val = document.getElementById('side-notes-textarea').value;
+            if (feat && feat.milestones !== val) {
+                feat.milestones = val;
+                markDirty(true);
+                renderGrid();
+            }
+        }
+
+        // FILTER & SEARCH
+        function filterFeaturesList(list) {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const col = document.getElementById('filter-column').value;
+            const size = document.getElementById('filter-size').value;
+            const feasibility = document.getElementById('filter-feasibility').value;
+
+            return list.filter(item => {
+                const matchesSearch = !search || 
+                    (item.id && item.id.toLowerCase().includes(search)) ||
+                    (item.title && item.title.toLowerCase().includes(search)) ||
+                    (item.milestones && item.milestones.toLowerCase().includes(search));
+
+                const matchesCol = !col || item.column === col;
+                const matchesSize = !size || item.size === size;
+                const matchesFeas = !feasibility || item.feasibility === feasibility;
+
+                return matchesSearch && matchesCol && matchesSize && matchesFeas;
+            });
+        }
+
+        function applyFilters() {
+            renderGrid();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-column').value = '';
+            document.getElementById('filter-size').value = '';
+            document.getElementById('filter-feasibility').value = '';
+            renderGrid();
+        }
+
+        function updateFilterDropdowns() {
+            // Columns list
+            const cols = Array.from(new Set(features.map(f => f.column).filter(Boolean))).sort();
+            const filterCol = document.getElementById('filter-column');
+            const currentCol = filterCol.value;
+            filterCol.innerHTML = `<option value="">Alle Columns</option>` + cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            filterCol.value = currentCol;
+
+            const datalistCols = document.getElementById('datalist-columns');
+            datalistCols.innerHTML = cols.map(c => `<option value="${escapeHtml(c)}">`).join('');
+
+            // Sizes list
+            const filterSize = document.getElementById('filter-size');
+            const currentSize = filterSize.value;
+            filterSize.innerHTML = `<option value="">Alle Sizes</option>` + Object.keys(config.tshirtSizes).map(s => `<option value="${s}">${s}</option>`).join('');
+            filterSize.value = currentSize;
+        }
+
+        // CONFIG MODAL & T-SHIRT MAPPING
+        function populateConfigForm() {
+            document.getElementById('cfg-start-date').value = config.startDate;
+            document.getElementById('cfg-end-date').value = config.endDate;
+            document.getElementById('cfg-sprint-days').value = config.sprintDays;
+            document.getElementById('cfg-velocity').value = config.velocity || '';
+
+            renderTshirtMappingTable();
+        }
+
+        function renderTshirtMappingTable() {
+            const tbody = document.getElementById('tshirt-mapping-tbody');
+            tbody.innerHTML = Object.entries(config.tshirtSizes).map(([size, val]) => `
+                <tr>
+                    <td class="py-2 px-3 font-bold text-slate-800">${size}</td>
+                    <td class="py-2 px-3">
+                        <input type="number" step="0.1" min="0" value="${val.minSprints}" 
+                               onchange="config.tshirtSizes['${size}'].minSprints = parseFloat(this.value) || 0"
+                               class="w-24 p-1 border border-slate-300 rounded text-xs">
+                    </td>
+                    <td class="py-2 px-3">
+                        <input type="number" step="0.1" min="0" value="${val.maxSprints}" 
+                               onchange="config.tshirtSizes['${size}'].maxSprints = parseFloat(this.value) || 0"
+                               class="w-24 p-1 border border-slate-300 rounded text-xs">
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function saveSettingsFromModal() {
+            config.startDate = document.getElementById('cfg-start-date').value;
+            config.endDate = document.getElementById('cfg-end-date').value;
+            config.sprintDays = parseInt(document.getElementById('cfg-sprint-days').value) || 14;
+            config.velocity = parseInt(document.getElementById('cfg-velocity').value) || 0;
+
+            markDirty(true);
+            toggleSettingsModal();
+            calculateAndRender();
+        }
+
+        function toggleSettingsModal() {
+            const modal = document.getElementById('modal-settings');
+            modal.classList.toggle('hidden');
+        }
+
+        function populateSizeDropdowns() {
+            const sizes = Object.keys(config.tshirtSizes);
+            const select = document.getElementById('input-size');
+            select.innerHTML = sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        // ADD NEW FEATURE
+        function openNewFeatureModal() {
+            document.getElementById('form-new-feature').reset();
+            // Generate auto ID
+            document.getElementById('input-id').value = 'FEAT-' + Math.floor(1000 + Math.random() * 9000);
+            populateSizeDropdowns();
+            document.getElementById('modal-new-feature').classList.remove('hidden');
+        }
+
+        function closeNewFeatureModal() {
+            document.getElementById('modal-new-feature').classList.add('hidden');
+        }
+
+        function handleNewFeatureSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('input-id').value.trim();
+            if (features.some(f => f.id === id)) {
+                alert(`ID "${id}" bestaat al. Kies een unieke ID.`);
+                return;
+            }
+
+            const newFeat = {
+                id: id,
+                priority: features.length + 1,
+                title: document.getElementById('input-title').value.trim(),
+                size: document.getElementById('input-size').value,
+                column: document.getElementById('input-column').value.trim() || 'New',
+                progress: parseInt(document.getElementById('input-progress').value) || 0,
+                milestones: document.getElementById('input-milestones').value.trim()
+            };
+
+            features.push(newFeat);
+            selectedFeatureId = newFeat.id;
+            markDirty(true);
+            closeNewFeatureModal();
+            calculateAndRender();
+        }
+
+        // DELETE FEATURE
+        function confirmDeleteFeature(id) {
+            const item = features.find(f => f.id === id);
+            if (!item) return;
+
+            document.getElementById('confirm-message').textContent = `Weet je zeker dat je feature "${item.id} - ${item.title}" wilt verwijderen?`;
+            document.getElementById('modal-confirm').classList.remove('hidden');
+
+            confirmResolver = (confirmed) => {
+                if (confirmed) {
+                    features = features.filter(f => f.id !== id);
+                    if (selectedFeatureId === id) selectedFeatureId = null;
+                    markDirty(true);
+                    calculateAndRender();
+                }
+            };
+        }
+
+        function closeConfirmModal(result) {
+            document.getElementById('modal-confirm').classList.add('hidden');
+            if (confirmResolver) {
+                confirmResolver(result);
+                confirmResolver = null;
+            }
+        }
+
+        // CSV & JSON IMPORT / EXPORT
+        function importCSVFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    let text = evt.target.result;
+                    // Remove UTF-8 Byte Order Mark (BOM) if present
+                    if (text.startsWith('\ufeff')) {
+                        text = text.slice(1);
+                    }
+                    parseAndLoadCSV(text);
+                } catch (err) {
+                    alert('Fout bij het verwerken van het CSV-bestand: ' + err.message);
+                }
+                e.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // Robust RFC 4180 compliant CSV Parser State Machine
+        function parseCSVToGrid(csvText) {
+            // Remove BOM just in case
+            if (csvText.startsWith('\ufeff')) {
+                csvText = csvText.slice(1);
+            }
+
+            // Auto-detect delimiter based on first header row
+            const firstLine = csvText.split(/\r\n|\n/)[0] || '';
+            let delimiter = ',';
+            if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) {
+                delimiter = ';';
+            } else if ((firstLine.match(/\t/g) || []).length > (firstLine.match(/,/g) || []).length) {
+                delimiter = '\t';
+            }
+
+            const rows = [];
+            let currentRow = [];
+            let currentToken = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < csvText.length; i++) {
+                const char = csvText[i];
+                const nextChar = csvText[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        currentToken += '"';
+                        i++; // Skip escaped quote
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === delimiter && !inQuotes) {
+                    currentRow.push(cleanCellValue(currentToken));
+                    currentToken = '';
+                } else if ((char === '\r' || char === '\n') && !inQuotes) {
+                    if (char === '\r' && nextChar === '\n') i++; // Skip \r\n
+                    currentRow.push(cleanCellValue(currentToken));
+                    if (currentRow.some(cell => cell.length > 0)) {
+                        rows.push(currentRow);
+                    }
+                    currentRow = [];
+                    currentToken = '';
+                } else {
+                    currentToken += char;
+                }
+            }
+
+            if (currentToken.length > 0 || currentRow.length > 0) {
+                currentRow.push(cleanCellValue(currentToken));
+                if (currentRow.some(cell => cell.length > 0)) {
+                    rows.push(currentRow);
+                }
+            }
+
+            return rows;
+        }
+
+        function cleanCellValue(val) {
+            if (!val) return '';
+            let cleaned = val.trim();
+            // Strip outer quotes if still wrapped
+            if (cleaned.startsWith('"') && cleaned.endsWith('"') && cleaned.length >= 2) {
+                cleaned = cleaned.substring(1, cleaned.length - 1).replace(/""/g, '"');
+            }
+            return cleaned.trim();
+        }
+
+        function parseAndLoadCSV(csvText) {
+            const rows = parseCSVToGrid(csvText);
+            if (rows.length < 2) {
+                alert('Het CSV-bestand bevat geen geldige gegevens of rijen.');
+                return;
+            }
+
+            // Normalize header names for robust matching
+            const headers = rows[0].map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+            // Column matching helpers
+            const findIndex = (keywords) => headers.findIndex(h => keywords.some(k => h === k || h.includes(k)));
+
+            const idIdx = findIndex(['id', 'workitemid', 'key', 'code', 'number']);
+            const prioIdx = findIndex(['priority', 'prio', 'backlogpriority', 'order', 'volgorde']);
+            const titleIdx = findIndex(['title', 'titel', 'feature', 'workitemtitle', 'summary', 'name', 'wat', 'subject']);
+            const sizeIdx = findIndex(['tshirtsize', 'tshirt', 'size', 'maat']);
+            
+            // FIX: Geef prioriteit aan expliciete boardkolom-namen boven algemene 'state'/'status'
+            let columnIdx = findIndex(['boardcolumn', 'kanbancolumn', 'column', 'kolom', 'board']);
+            if (columnIdx < 0) {
+                columnIdx = findIndex(['state', 'status']);
+            }
+
+            const progressIdx = findIndex(['progress', 'voortgang', 'af', 'percentage', 'done']);
+            const milestonesIdx = findIndex(['milestones', 'mijlpaal', 'mijlpalen', 'notes', 'notities', 'opmerkingen']);
+
+            const importedFeatures = [];
+
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length === 0 || (row.length === 1 && !row[0])) continue;
+
+                const rawId = idIdx >= 0 && row[idIdx] ? row[idIdx] : `FEAT-${1000 + i}`;
+                const title = titleIdx >= 0 && row[titleIdx] ? row[titleIdx] : `Geïmporteerde Feature ${i}`;
+                
+                // Clean up T-Shirt size (e.g. "3. S" or "1. XXS" -> "S" or "XXS")
+                let rawSize = sizeIdx >= 0 && row[sizeIdx] ? row[sizeIdx].toUpperCase() : 'M';
+                const matchedSize = rawSize.match(/\b(XXS|XS|S|M|L|XL|XXL)\b/);
+                if (matchedSize) {
+                    rawSize = matchedSize[1];
+                } else if (!config.tshirtSizes[rawSize]) {
+                    rawSize = 'M';
+                }
+
+                const column = columnIdx >= 0 && row[columnIdx] ? row[columnIdx] : 'Backlog';
+                const progress = progressIdx >= 0 ? parseInt(row[progressIdx]) || 0 : 0;
+                const milestones = milestonesIdx >= 0 ? row[milestonesIdx] : '';
+
+                let rawPrio = prioIdx >= 0 ? parseInt(row[prioIdx]) : null;
+
+                importedFeatures.push({
+                    id: String(rawId),
+                    priority: isNaN(rawPrio) || !rawPrio ? i : rawPrio,
+                    title: String(title),
+                    size: rawSize,
+                    column: String(column),
+                    progress: Math.max(0, Math.min(100, progress)),
+                    milestones: String(milestones)
+                });
+            }
+
+            // Sort by priority
+            importedFeatures.sort((a, b) => a.priority - b.priority);
+
+            if (importedFeatures.length > 0) {
+                features = importedFeatures;
+                selectedFeatureId = features[0].id;
+                markDirty(true);
+                calculateAndRender();
+                
+                // Show confirmation indicator
+                const saveIndicator = document.getElementById('save-indicator');
+                saveIndicator.className = 'text-xs text-blue-700 bg-blue-50 font-medium flex items-center gap-1.5 px-2.5 py-1 rounded border border-blue-200 animate-bounce';
+                saveIndicator.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-blue-600"></i> ${importedFeatures.length} features succesvol geïmporteerd!`;
+                
+                setTimeout(() => {
+                    markDirty(true);
+                }, 2500);
+            } else {
+                alert('Geen geldige features gevonden in het CSV-bestand.');
+            }
+        }
+
+        function exportToCSV() {
+            if (features.length === 0) return;
+
+            const headers = ['Priority', 'ID', 'Title', 'TShirtSize', 'Board Column', '% Af', 'Datum Valt Mee', 'Datum Valt Tegen', 'Haalbaarheid', 'Mijlpalen'];
+            const rows = features.map(f => [
+                f.priority,
+                `"${f.id}"`,
+                `"${(f.title || '').replace(/"/g, '""')}"`,
+                `"${f.size}"`,
+                `"${f.column || ''}"`,
+                f.progress || 0,
+                `"${formatDateNL(f.bestCaseDate)}"`,
+                `"${formatDateNL(f.worstCaseDate)}"`,
+                `"${f.feasibilityLabel}"`,
+                `"${(f.milestones || '').replace(/"/g, '""')}"`
+            ]);
+
+            const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `roadmap_backlog_export_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportToJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ config, features }, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `roadmap_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function importJSONFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    if (parsed.features && Array.isArray(parsed.features)) {
+                        config = parsed.config || config;
+                        features = parsed.features;
+                        markDirty(true);
+                        populateConfigForm();
+                        calculateAndRender();
+                        alert('JSON Backup succesvol ingeladen!');
+                    }
+                } catch (err) {
+                    alert('Fout bij inladen van JSON bestand.');
+                }
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // UTILITY FUNCTIONS
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + Math.round(days));
+            return result;
+        }
+
+        function getFutureDateISO(days) {
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            return d.toISOString().slice(0, 10);
+        }
+
+        function formatDateNL(dateObj) {
+            if (!dateObj) return '-';
+            const d = new Date(dateObj);
+            if (isNaN(d.getTime())) return '-';
+            return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+</html>
